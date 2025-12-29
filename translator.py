@@ -28,7 +28,6 @@ BASE_URL = "https://api.poe.com/v1"
 MODEL = "gpt-5.2-instant"
 
 # Hotkey Configuration
-HOTKEY = "<alt>+1"
 HOTKEY_DISPLAY = "Alt+1"
 
 
@@ -219,6 +218,7 @@ class TranslatorWindow(QWidget):
         self.app_icon = create_icon()
         self.translate_thread = None
         self.drag_pos = None
+        self.current_keys = set() # Store currently pressed keys
         self.init_ui()
         self.setup_hotkey()
         self.setup_tray()
@@ -313,7 +313,6 @@ class TranslatorWindow(QWidget):
         return btn
         
     def paintEvent(self, event):
-        # Remove shadow drawing, no more edge blur effect
         pass
     
     def mousePressEvent(self, event):
@@ -345,12 +344,38 @@ class TranslatorWindow(QWidget):
             self.copy_btn.raise_()
     
     def setup_hotkey(self):
-        hotkey = keyboard.HotKey(keyboard.HotKey.parse(HOTKEY), 
-                                 lambda: QTimer.singleShot(0, self.show_and_translate))
-        self.listener = keyboard.Listener(
-            on_press=lambda k: hotkey.press(self.listener.canonical(k)),
-            on_release=lambda k: hotkey.release(self.listener.canonical(k))
-        )
+        """Strict hotkey implementation: Only triggers on exact Alt+1"""
+        
+        def on_press(key):
+            # Normalize key
+            key = self.listener.canonical(key)
+            self.current_keys.add(key)
+            
+            # Strict check: Are EXACTLY 2 keys pressed?
+            if len(self.current_keys) == 2:
+                has_alt = False
+                has_one = False
+                
+                for k in self.current_keys:
+                    # Check for Alt (Left, Right, or Generic)
+                    if k in (keyboard.Key.alt, keyboard.Key.alt_l, keyboard.Key.alt_r):
+                        has_alt = True
+                    # Check for '1'
+                    elif isinstance(k, keyboard.KeyCode) and k.char == '1':
+                        has_one = True
+                
+                # Only trigger if both Alt and 1 are present, and NO other keys
+                if has_alt and has_one:
+                    QTimer.singleShot(0, self.show_and_translate)
+
+        def on_release(key):
+            key = self.listener.canonical(key)
+            try:
+                self.current_keys.remove(key)
+            except KeyError:
+                pass
+
+        self.listener = keyboard.Listener(on_press=on_press, on_release=on_release)
         self.listener.start()
     
     def setup_tray(self):
@@ -359,7 +384,7 @@ class TranslatorWindow(QWidget):
         self.tray.setToolTip(f"Quick Translator - Press {HOTKEY_DISPLAY} to open")
         
         menu = QMenu()
-        menu.addAction("Show translation window", self.show_and_translate)
+        menu.addAction("Show", self.show_and_translate)
         menu.addSeparator()
         menu.addAction("Exit", self.quit_app)
         self.tray.setContextMenu(menu)
@@ -369,7 +394,7 @@ class TranslatorWindow(QWidget):
         )
         self.tray.show()
         self.tray.showMessage("Quick Translator started", 
-                             f"Press {HOTKEY_DISPLAY} to open translation window\nUsing {MODEL} model",
+                             f"Using {MODEL} model",
                              QSystemTrayIcon.MessageIcon.Information, 2000)
     
     def quit_app(self):
