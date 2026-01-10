@@ -345,12 +345,18 @@ class TranslatorWindow(QWidget):
             self.copy_btn.raise_()
     
     def setup_hotkey(self):
+        self.ctrl_pressed = False
         hotkey = keyboard.HotKey(keyboard.HotKey.parse(HOTKEY), 
-                                 lambda: QTimer.singleShot(0, self.show_and_translate))
-        self.listener = keyboard.Listener(
-            on_press=lambda k: hotkey.press(self.listener.canonical(k)),
-            on_release=lambda k: hotkey.release(self.listener.canonical(k))
-        )
+                                 lambda: QTimer.singleShot(0, self.show_and_translate) if not self.ctrl_pressed else None)
+        def on_press(k):
+            if k in (keyboard.Key.ctrl_l, keyboard.Key.ctrl_r):
+                self.ctrl_pressed = True
+            hotkey.press(self.listener.canonical(k))
+        def on_release(k):
+            if k in (keyboard.Key.ctrl_l, keyboard.Key.ctrl_r):
+                self.ctrl_pressed = False
+            hotkey.release(self.listener.canonical(k))
+        self.listener = keyboard.Listener(on_press=on_press, on_release=on_release)
         self.listener.start()
     
     def setup_tray(self):
