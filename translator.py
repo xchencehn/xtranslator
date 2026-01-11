@@ -23,9 +23,9 @@ logger = logging.getLogger(__name__)
 
 
 # API Configuration
-API_KEY = "uZa_BE743Y-PrqVpp5-eJbc5RqQpM4JpxcsoW1jZPfk"
-BASE_URL = "https://api.poe.com/v1"
-MODEL = "gpt-5.2-instant"
+API_KEY = "sk-2728b4eda16941079f17810c1baa6e39"
+BASE_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1"
+MODEL = "qwen-flash"
 
 # Hotkey Configuration
 HOTKEY = "<alt>+1"
